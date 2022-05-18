@@ -1,0 +1,445 @@
+---
+title: The first annual CAS actuarial technology survey
+output: 
+  word_document:
+    reference_docx: cas_rp_template.docx
+    keep_md: true
+params: 
+  inputDir: "analyzed/"
+  thisDir:  "present/"
+  outputDir: "presented/"
+  fileStem: "technology_survey"
+---
+
+```{r include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath('../'))
+
+knitr::opts_chunk$set(
+  echo = FALSE
+  , cache = FALSE
+  , warning = FALSE
+  , message = FALSE
+  , error = TRUE
+  , fig.width = 6.5
+  , fig.height = 4
+  , dev = c('jpeg', 'png')
+  , dpi = 300
+)
+
+library(tidyverse)
+```
+
+```{r include=FALSE}
+load('analyzed/eda.rda')
+```
+
+```{r}
+excel_daily <- tbl_usage_summary %>% 
+  filter(tool == 'Excel' & usage_frequency == 'At least once a day') %>% 
+  pull(pct_tool) %>% 
+  scales::percent(accuracy = .1)
+
+polyglots <- sum(tbl_polyglot$pct_users[tbl_polyglot$n_tools > 1]) %>% 
+  scales::percent(accuracy = .1)
+
+excel_exclusive <- tbl_polyglot_excel %>% 
+  filter(n_tools == 1) %>% 
+  pull(total_users)
+
+learning_barrier_time <- tbl_barrier_summary %>% 
+  filter(barrier == 'Not Enough Time') %>% 
+  pull(pct_learning) %>% 
+  scales::percent(accuracy = 0.1)
+
+tree_use <- tbl_technique_summary %>% 
+  filter(technique == 'Tree-based Methods') %>% 
+  pull(pct_use) %>% 
+  scales::percent(accuracy = 0.1)
+
+ai_use <- tbl_technique_summary %>% 
+  filter(technique == 'AI/Deep Learning') %>% 
+  pull(pct_use) %>% 
+  scales::percent(accuracy = 0.1)
+
+tbl_increase_proficiency_summary <- tbl_increase_proficiency_summary %>% 
+  mutate(
+    pct_increase_str = pct_increase %>% scales::percent(accuracy = 0.1)
+  ) %>% 
+  arrange(desc(pct_increase))
+```
+
+Actuaries are clever people, who have impressive mathematical skills and experience. However, they cannot generate results without the assistance of technology. A wide range of software tools exist to carry out calculations on large and small data sets, to store, extract and transform information, and to generate output that may be shared with their stakeholders. Actuaries use these tools to implement a wide range of techniques, from classic methods like chain-ladder reserving to more recently established predictive analytics methods like decision trees, or deep learning.
+
+But how is all of this being done? In the summer of 2021, the Casualty Actuarial Society (CAS) conducted the first of what we hope will be an annual survey on technology used by actuaries. A total of `r n_respondents %>% scales::comma()` responses were received from both members and candidates still sitting for exams. We asked about what tools are being used, how proficient respondents feel they are, what barriers they experience, what techniques they apply and where they would like to improve.
+
+This paper will walk through results in detail. First, though, some key observtions are listed below.
+
+* Excel continues to be the most widely used software tool (`r excel_daily` of respondents report using it at least once a day).
+* That understood, most actuaries (`r polyglots`) use more than one tool.
+<!-- * Actuaries are either modest, or using tools at the edge of their proficiency. -->
+<!-- * The view of Excel's fitness for ratemaking, reserving and capital modeling is lower than respondents' daily use. -->
+<!-- * Despite their low usage levels, respondents feel that tools like R and Python are appropriate for ratemaking. -->
+<!-- * Respondents expressed uncertainty about the fitness of tools for capital modeling.(`r ` had ) -->
+* Actuaries want to increase their proficiency in R (`r tbl_increase_proficiency_summary$pct_increase_str[1]`), Python (`r tbl_increase_proficiency_summary$pct_increase_str[2]`), SQL (`r tbl_increase_proficiency_summary$pct_increase_str[3]`) and ... Excel (`r tbl_increase_proficiency_summary$pct_increase_str[4]`).
+* No tool gets more than 50% of respondents who want to increase their proficiency.
+* Time is the greatest barrier to learning new technology. (`r learning_barrier_time` of respondents felt so.)
+* Newer analysis methods like tree-based algorithms, and AI are not widely used. (`r tree_use` and `r ai_use`, respectively)
+
+# Demographics
+
+Before getting into the results, let's get a sense of who responded. We asked questions about age, designation, type of employer and so on. Although we may sense a picture of what a typical respondent may look like, we received a breadth of characteristics among the participants of the survey.
+
+A plurality of respondents are in their 30's, but the second largest category is under 30. Actuaries 40 and over also replied in decreasing numbers for older groups.
+
+```{r plt_age}
+plt_age +
+  coord_flip()
+```
+
+Respondents are overwhelmingly Fellows. This is not altogether surprising as they are most likely to be motivated to respond, having already shown engagement to the CAS through their commitment to the exam process. We are happy to see that some of our candidates took time to share their experiences and thoughts and hope to see this increase in future surveys.
+
+```{r plt_designation}
+plt_designation
+```
+
+Most of the respondents have been practicing for more than 20 years, but there was a meaningful volume of response from actuaries closer to the start of their career.
+
+```{r plt_years_of_experience}
+plt_years_of_experience +
+  coord_flip()
+```
+
+Consistent with CAS member numbers, most survey participants are based in the United States. However, we're happy to see responses from around the world. Respondents were able to enter a location when choosing "Other". Those individuals are largely made up of actuaries practicing in Bermuda.
+
+```{r plt-location}
+plt_location + 
+  coord_flip()
+```
+
+It should be no surprise that most respondents work for insurance companies. Consulting firms are a distant second place.
+
+```{r plt-type-of-company}
+plt_type_of_company
+```
+
+With regard to the size of actuarial departments, the companies run the gamut. Of note is the bimodal character of the distribution. It is just as likely that a respondent works for a company with only 1-5 actuaries as to be employed by an organization with 51-200 actuaries.
+
+```{r plt-company-size}
+plt_company_size
+```
+
+# What tools are actuaries using?
+
+Our survey begins by asking what tools actuaries are using and with what frequency. The survey asked how often actuaries used each of the following:
+
+* R
+* Excel
+* Non-Excel spreadsheet like Google Sheets
+* SAS
+* Python
+* Data visualization tool like Tableau
+* MATLAB/Octave (in the displays below, we refer to this option as "MATLAB" for short)
+* Business intelligence dashboarding tool like Power BI
+* SQL
+
+We will swiftly acknowledge that this list is not, nor can it be exhaustive. In order to gain additional context we asked for suggestions about other tools could be included. The ten most common are shown below:
+
+```{r}
+tbl_tools_added %>% 
+  count(word, sort = TRUE) %>% 
+  head(10) %>% 
+  rename(
+    `Software` = word
+    , `# of mentions` = n
+  ) %>% 
+  knitr::kable()
+```
+
+We had assumed that VBA would come under the general heading of Excel. Additionally, we felt that SQL would be expansive enough to encompass a database management program like Access. We will ensure that this is made explicit in future surveys. Many of the others like Arius, or Metarisk are written with an actuarial end-user in mind. We recognize that these are tools with a meaningfully large user base and we'd like to know where and how they're being used. There is an inherent challenge in producing an inventory of all such tools on the market. In the future, we may add an option for 3rd party actuarial software with appropriate examples and an option to indicate specific products.
+
+```{r}
+n_no_excel <- tbl_usage_summary %>% 
+  filter(tool == 'Excel' & usage_frequency == 'Not at all') %>% 
+  pull(n_total)
+```
+
+In the figure below, we see a result which is unlikely to surprise anyone. Results are arranged in ascending order by the count of respondents who marked 'Not at all" and Excel comes out on top. Of those who responded, there were only `r n_no_excel` respondents who do not use Excel at all. Moving down the list, SQL appears at number two, though with a substantially increased number of 'Not at all'. It is noteworthy that SAS has more users than Python.
+
+```{r plt-basic-usage}
+plt_basic_usage
+```
+
+We may ask whether this is a function of age, or designation. The next figure shows the relative portions of usage frequency by tool and age. Note that the scale of the axis has changed from a count of responses to a percentage of the total within each age and designation category. Refer to the demographics section to note the differences in volume of responses within each category. A vertical line has been drawn at fifty percent.
+
+```{r plt-usage-by-age}
+plt_usage_by_age +
+  coord_flip() +
+  guides(
+    fill = guide_legend(
+      title = 'Usage frequency'
+      , title.position = 'top'
+      , nrow = 2
+      , title.hjust = 0.5)) +
+  theme(legend.position = 'bottom', panel.spacing.x = unit(4, "mm"))
+```
+
+We see a fairly clear distinction for SQL, SAS, R, and --- to some extent --- Python based on age. This may be a function of the specific tasks that actuaries are called to perform at varying stages of their career. It is interesting to note that --- although MATLAB is not widely used --- it is the only scripting tool which has greater support amongst older actuaries.
+
+The results for designation largely track with those of age, though the patterns are less stark.
+
+```{r plt-usage-by-designation}
+plt_usage_by_designation +
+  coord_flip() +
+  guides(
+    fill = guide_legend(
+      title = 'Usage frequency'
+      , title.position = 'top'
+      , nrow = 2
+      , title.hjust = 0.5)) +
+  theme(legend.position = 'bottom', panel.spacing.x = unit(4, "mm"))
+```
+
+## More than one tool
+
+Although it may be true that virtually every respondent uses Excel from time to time, it is not true that Excel is the only tool that they use. True, there were `r excel_exclusive` respondents who marked "Not at all" for every non-Excel tool. However, many others reported some level of use of other tools.
+
+```{r plt-polyglot}
+plt_polyglot
+```
+
+These figures go down when we restrict ourselves to tools that are used at least once a week.
+
+```{r plt-ge-week}
+plt_polyglot_ge_week
+```
+
+We may surmise that although they are capable of using a variety of tools, most of their work can be performed using only one or two. We should also note that maintaining fluency in multiple tools is difficult, and may not be necessary day-to-day.
+
+# Proficiency
+
+In addition to asking users how frequently they used particular tools, we also asked how they would regard their own proficiency. This is necessarily subjective, but revealing all the same. Two things may be noted. One, even though an actuary may use a particular tool at least once a day, many do not regards themselves as an expert. Some level of modesty may come into play here. Two, actuaries may consider themselves to be relatively proficient for tools which they are not presently using. This could have one of two causes. It could reflect the fact that the respondent has mastered a tool (MATLAB or SAS, say) which they no longer use. Alternately, it could be that they are skilled in a tool (Python, or R) which their organization does not support. The survey (for this year, at least) does not have questions which can directly answer which cause is at play.
+
+```{r plt-proficiency}
+plt_proficiency
+```
+
+<!-- ## Proficiency and use -->
+
+# Suitability
+
+With the caveat that there are tools actuaries are using that were not captured in the survey, we wanted to gauge how well suited these tools were in performing the core actuarial tasks of ratemaking, reserving and capital modeling. In the plot below, the tools have been arranged in descending order by the number of users who felt that they were very much suited to the task.
+
+```{r plt-suitability, fig.height = 8}
+library(gridExtra)
+
+gridExtra::grid.arrange(
+  plt_suitability_ratemaking
+  , plt_suitability_reserving
+  , plt_suitability_capital
+  , ncol = 1
+)
+```
+
+Overall, we find that sentiment aligns with usage. The scripting tools SAS and Python move up relative to their frequency of use. Among tools ranked "Not at all", Google Sheets does not fare as well as the others, yet it still has its defenders.
+
+<!-- ## Uncertainty -->
+
+The level of certainty about the fitness of some tools by practice area is interesting. In particular, the certainty decreases as we move from ratemaking to reserving to capital modeling. Below, we show the suitability ratings totaled across all tools, with practice areas compared against one another. 
+
+```{r plt-suitability-by-practice}
+plt_suitability_by_practice
+```
+
+In the plot above, users who gave no response were not included. It may be reasonable to infer that a failure to mark an answer is tantamount to a response of "Unsure". When we make this inference, we have the plot below. The overall conclusion is unchanged.
+
+```{r plt-suitability-by-practice-na}
+plt_suitability_by_practice_na
+```
+
+One might assume that the uncertainty stems from the inclusion of tools which the respondent does not use on a regular basis. However, if we focus exclusively on Excel, we find that the general pattern holds. Again, non-responses have been grouped with "Unsure". We observe that roughly 50% of respondents are either not sure, or feel that Excel is not appropriate for capital modeling.
+
+```{r plt-suitability-by-practice-excel}
+plt_suitability_by_practice_excel
+```
+
+There is greater uncertainty among the other tools. The plot below shows results for all, in order based on the total responses across all practice areas that marked a tool "Somewhat" or "Very much so". Interestingly, SQL comes in second after Excel. SQL's primary use is data acquisition and aggregation, not predictive analytics. Admittedly this is a potential weakness in the survey insofar as respondents are likely to acknowledge SQL's utility as part of the analytics pipeline. At the same time, though, it may reveal that a non-trivial amount of work encompasses the construction of bespoke queries for ad hoc data analysis.
+
+It is also noteworthy that R and Python showed their largest (though admittedly small) number of "Not at all" for reserving. This is intriguing given that both languages have packages which were written specifically to deal with property casualty loss reserving. (Information about the R package may bd found at https://cran.r-project.org/package=ChainLadder and the Python package may be found at https://chainladder-python.readthedocs.io/ .)
+
+```{r plt-suitability-by-practice-all}
+plt_suitability_by_practice_all
+```
+
+# Barriers
+
+Excel is an entrenched element of the technology stack at many companies. Even when a solution like R, Python, or Octave carries no financial cost, actuaries may not move to learn and implement them. 
+
+```{r ply-barriers}
+plt_barriers
+```
+
+# Increase proficiency
+
+Despite these potential barriers, many respondents did indicate their intent to increase proficiency in some of the tools listed. R and Python --- both scripting tools --- came out on top, followed by SQL. It is interesting to note that Excel placed fourth, just ahead of the point-and-click tools Power BI and Tableau. 
+
+```{r plt-increase-proficiency}
+plt_increase_proficiency +
+  labs(
+    x = "Tool", 
+    y = "# of respondents", 
+    title = "Respondents interested in increasing their proficiency")
+```
+
+Seeing that more than 600 actuaries want to increase their skills in R, and more than 500 in Python suggests a meaningful appetite for improvement. However, when this is viewed in the context of the entire survey population, the picture changes. No tool gets more than 50% of respondents who want to increase their proficiency. Does this present an opportunity for an actuary to differentiate themselves, or is it reflective of the technical and market realities of how actuaries are deployed in insurance enterprises? The answer to that question is, of course, a moving target and will vary amongst actuaries and from one company to another.
+
+```{r plt-increase-proficiency-pct}
+plt_increase_proficiency_pct +
+  labs(x = "Tool", y = "% of respondents", title = "Respondents interested in incresing their proficiency")
+```
+
+Given its ubiquity, Excel's relatively high placement is noteworthy. Is this a result of users who engage with Excel often but don't regard themselves as sufficiently proficient? The data would suggest so. Most of those who intend to continue to improve their facility use Excel at least once a day, or once a week, with the top 3 bins using it daily. Of those, 20% of users who would deem themselves experts and who use Excel at least once a day want to get better. The percentages are higher for users who regard their skills less than expert.
+
+```{r}
+kable_increase_proficiency <- function(tbl_in){
+  tbl_in %>% 
+    mutate(pct_increase = pct_increase %>% scales::percent()) %>% 
+    select(
+      `Usage frequency` = usage_frequency
+      , Proficiency = proficiency
+      , `Increase` = will
+      , `Total` = n_total
+      , `% of segment` = pct_increase
+    ) %>% 
+    knitr::kable()
+}
+```
+
+```{r plt-increase-proficiency-excel}
+tbl_respondent_tool %>%
+  plot_increase_proficiency('Excel')
+```
+
+What does this look like for R, Python or SQL, the top 3 areas of increased proficiency? The results for R are shown below and the picture is quite different. The largest segments of responses come from actuaries who are using R less regularly and whose proficiency is a bit lower. This suggests an appetite for broadening one's skills, rather than going deeper with a tool that one has already mastered.
+
+```{r plt-increase-proficiency-R}
+tbl_respondent_tool %>%
+  plot_increase_proficiency('R')
+```
+
+For Python, the picture is similar, though with a slightly larger number of respondents at the bottom left. Note that these are people who are not presently using Python and would regard themselves as being not at all proficient. Why would they want to invest in learning a tool they are not presently using? We may conjecture any number of reasons, not least of which could be that these respondents are presently in a "chicken or the egg" situation. That is, they may feel that Python would be beneficial, but until they reach a basic level of understanding, they are not in a position to introduce it to their work. It will be interesting to see how this figure changes in subsequent surveys.
+
+```{r plt-increase-proficiency-Python}
+tbl_respondent_tool %>%
+  plot_increase_proficiency('Python')
+```
+
+Turning to SQL, the view comes to resemble the situation for Excel more closely. Even respondents who are reasonably adept with SQL want to continue to improve.
+
+```{r plt-increase-proficiency-sql}
+tbl_respondent_tool %>%
+  plot_increase_proficiency('SQL')
+```
+
+```{r}
+kable_increase_proficiency_wont <- function(tbl_in){
+  tbl_in %>% 
+    arrange(desc(wont)) %>% 
+    filter(usage_frequency %in% c('Not at all', 'Less than once a month')) %>% 
+    filter(proficiency %in% c('Not at all', 'Basic stuff')) %>% 
+    filter(wont > 10) %>% 
+    head(10) %>% 
+    mutate(
+      pct_increase = 1 - pct_increase      
+    ) %>% 
+    mutate(pct_increase = pct_increase %>% scales::percent()) %>% 
+    select(
+      `Usage frequency` = usage_frequency
+      , Proficiency = proficiency
+      , `No plan to increase` = wont
+      , `Total` = n_total
+      , `% of segment` = pct_increase
+    ) %>% 
+    knitr::kable()
+}
+```
+
+We should not finish this topic without a mention of those who do not presently use R or Python and have no interest in changing this. That segment of the survey population for R is given below. 
+
+```{r}
+tbl_respondent_tool %>%
+  increase_proficiency_pct('R') %>% 
+  kable_increase_proficiency_wont()
+```
+
+And the corresponding figures for Python:
+
+```{r}
+tbl_respondent_tool %>%
+  increase_proficiency_pct('Python') %>% 
+  kable_increase_proficiency_wont()
+```
+
+# Techniques
+
+Finally, we give an overview of the use of some classic actuarial techniques alongside a few that have gained use in the past decade or so. Lines are drawn at 10%, 25% and 50%. Of note is that fewer than a quarter of respondents use tree-based methods and barely more than 10% use Bayesian techniques or unsupervised learning methods. For all of the talk about AI and deep learning, fewer than 10% of survey respondents use these methods at all.
+
+```{r plt-technique-summary}
+plt_technique_summary
+```
+
+# Comments
+
+`r nrow(tbl_comment)` respondents chose to add a comment. All of the comments will be made available with the data set. Meanwhile, here are a few that we found particularly interesting
+
+> "Analytic techniques leveraged can vary greatly by role, sometimes creating a perceived barrier to posting to a new role (don't know the tool, so unqualified for the job)"
+
+> "Careful about inference from question about “which methods we currently use should be”. This is far too tied to the past and those methods are changing RAPIDLY"
+
+> "Extremely generic comment:  my direct report analysts (22-27 yrs old) have been becoming frustrated with management's inability to keep up with technology.  And since mgmt doesn't want to devalue themselves, falling back on cost/expense as excuse reason to prevent us from learning more programming for automation."
+
+> "The biggest challenge I have in learning other tools is lack of time.  I see uses for R (for example), but my workload and deliverable timelines usually mean that I can abuse Excel more efficiently than climbing the learning curve for R."
+
+# Conclusion
+
+We are under no illusion that the information presented here can be considered the final word on how actuaries are using technology now, nor how things may change going forward. Nevertheless, we find some results which substantiate conventional wisdom, along with some data which raises some provocative areas for discussion. 
+
+Some questions remain: Can we expect the profession to continue to be relevant by such an emphasis on a single tool like Excel? Has this hampered the adoption of leading edge predictive modeling and machine learning techniques? Alternately, are actuaries capably performing their vital functions in ways that are well served by a straightforward and pragmatic technology stack? Are there cultural elements that impede adoption of newer tools and techniques? To what extent does that constitute a generational divide? 
+
+This survey does not purport to give definitive answers to those, nor potentially other questions. We hope, however, that it will inform conversations which do attempt to answer them as well as future surveys on this topic.
+
+Speaking of which, this paper should not be construed as a monologue. If you have thoughts about the results --- perhaps they suggest opportunities for new continuing education offerings, tweaks to the syllabus, or new research projects --- please let us know.
+
+<!-- # Appendix -->
+
+<!-- ## Usage -->
+
+<!-- ## Proficiency -->
+
+<!-- ## Suitability -->
+
+<!-- ## Barriers -->
+
+<!-- ## Increased proficiency -->
+
+<!-- ## Techniques -->
+
+<!-- ## Comments -->
+
+<!-- ## Demographics -->
+
+
+<!-- ## Comments -->
+
+```{r}
+# tbl_comment %>% 
+#   knitr::kable()
+```
+
+
+```{r include = FALSE}
+mojo <- 5
+save(
+  mojo
+  , file = represtools::OutputFile(params)
+)
+```
