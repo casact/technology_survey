@@ -3,7 +3,6 @@ title: The first annual CAS actuarial technology survey
 output: 
   word_document:
     reference_docx: cas_rp_template.docx
-    keep_md: true
 params: 
   inputDir: "analyzed/"
   thisDir:  "present/"
