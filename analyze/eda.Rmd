@@ -24,11 +24,15 @@ library(tidytext)
 ```
 
 ```{r include=FALSE, error = TRUE}
-load(file = 'cooked/responses.rda')
+load(file = 'cooked/wrangle.rda')
 ```
 
 ```{r}
-n_respondents <- nrow(tbl_responses)
+tbl_respondents <- tbl_responses |> 
+  group_by(survey_year) |> 
+  summarise(
+    n_respondents = n()
+  )
 ```
 
 ```{r}
