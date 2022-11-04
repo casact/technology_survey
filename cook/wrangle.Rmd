@@ -72,8 +72,8 @@ tbl_responses <- tbl_responses %>%
 f_usage <- c(
   'Not at all'
   , 'Less than once a month'
-  , 'About once a month'
-  , 'About once a week'
+  , 'At least once a month'
+  , 'At least once a week'
   , 'At least once a day'
 ) %>% 
   as_factor()
@@ -146,6 +146,7 @@ suited_cols <- names(tbl_responses) %>%
   str_subset("suited_")
 
 tbl_responses <- tbl_responses %>%
+  mutate_at(often_use_cols, str_replace, "About once", "At least once") |> 
   mutate_at(often_use_cols, relevel_factors, new_levels = f_usage) %>% 
   mutate_at(how_proficient_cols, relevel_factors, new_levels = f_how_proficient) %>% 
   mutate_at(suited_cols, relevel_factors, new_levels = f_suited)
