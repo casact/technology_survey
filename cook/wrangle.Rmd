@@ -1,0 +1,362 @@
+---
+title: Cook Responses
+params: 
+  inputDir: "cooked/"
+  thisDir:  "cook/"
+  outputDir: "cooked/"
+  fileStem: "wrangle"
+---
+
+```{r include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath('../'))
+
+knitr::opts_chunk$set(
+  echo = TRUE
+  , warning = TRUE
+  , message = TRUE
+  , error = TRUE
+)
+
+library(tidyverse)
+```
+
+```{r error = TRUE}
+load(file = 'cooked/responses_2021.rda')
+load(file = 'cooked/responses_2022.rda')
+```
+
+# Wrangle
+
+```{r}
+tbl_responses <- bind_rows(
+  tbl_responses_2021,
+  tbl_responses_2022
+)
+
+rm(tbl_responses_2021, tbl_responses_2022)
+```
+
+
+```{r }
+tbl_responses <- tbl_responses %>% 
+  select(-ip_address, -email_address, -first_name, -last_name, -custom_data_1, -start_date, -end_date)
+
+tbl_responses <- tbl_responses %>% 
+  mutate(
+    type_of_company_other = tolower(type_of_company_other)
+  )
+
+na_to_bool <- function(x) {
+  !is.na(x)
+}
+
+techniques_col <- names(tbl_responses) %>% 
+  str_subset("techniques") %>% 
+  str_subset("other", negate = TRUE)
+
+barriers_col <- names(tbl_responses) %>% 
+  str_subset("barriers") %>% 
+  str_subset("other", negate = TRUE)
+
+proficiency_col <- names(tbl_responses) %>% 
+  str_subset("proficiency") %>% 
+  str_subset("other", negate = TRUE)
+
+tbl_responses <- tbl_responses %>% 
+  mutate_at(c(techniques_col, barriers_col, proficiency_col), na_to_bool)
+```
+
+## Factors with levels
+
+```{r }
+f_usage <- c(
+  'Not at all'
+  , 'Less than once a month'
+  , 'About once a month'
+  , 'About once a week'
+  , 'At least once a day'
+) %>% 
+  as_factor()
+
+f_how_proficient <- c(
+  "Not at all"
+  , "Basic stuff"
+  , "Intermediate"
+  , "Advanced"
+  , "Expert"
+) %>% 
+  as_factor()
+
+f_suited <- c(
+  "Unsure"
+  , "Not at all"
+  , "Somewhat"
+  , "Very much so"
+) %>% 
+  as_factor()
+
+f_designation <- c(
+  'None yet'
+  , 'ACAS'
+  , 'FCAS'
+) %>% 
+  as_factor()
+
+f_age <- c(
+  'Prefer not to say'
+  , 'Up to 30 years old'
+  , '31-40 years old'
+  , '41-50 years old'
+  , '51-60 years old'
+  , '61 or older'
+) %>% 
+  as_factor()
+
+f_actuaries_at <- c(
+  "1-5"
+  , "6-10"
+  , "11-25"
+  , "26-50"
+  , "51-200"
+  , "200+"
+) %>% 
+  as_factor()
+
+f_years_of_experience <- c(
+  "Less than 5"
+  , "Between 5 and 10"
+  , "Between 10 and 15"
+  , "Between 15 and 20"
+  , "More than 20"
+) %>% 
+  as_factor()
+
+relevel_factors <- function(x, new_levels){
+  x %>% 
+    factor(levels = new_levels)
+}
+
+often_use_cols <- names(tbl_responses) %>% 
+  str_subset("how_often_use_")
+
+how_proficient_cols <- names(tbl_responses) %>% 
+  str_subset("how_proficient")
+
+suited_cols <- names(tbl_responses) %>% 
+  str_subset("suited_")
+
+tbl_responses <- tbl_responses %>%
+  mutate_at(often_use_cols, relevel_factors, new_levels = f_usage) %>% 
+  mutate_at(how_proficient_cols, relevel_factors, new_levels = f_how_proficient) %>% 
+  mutate_at(suited_cols, relevel_factors, new_levels = f_suited)
+
+
+tbl_responses <- tbl_responses %>% 
+  mutate(
+    designation = factor(designation, levels = f_designation)
+    , age = factor(age, f_age)
+    , actuaries_at_my_organization = factor(actuaries_at_my_organization, f_actuaries_at)
+    , years_of_experience = factor(years_of_experience, levels = f_years_of_experience)
+  )
+```
+
+Random sample of responses from 2021
+
+```{r}
+tbl_responses |> 
+  filter(survey_year == 2021) |> 
+  slice_sample(n = 50)
+```
+
+Random sample of responses from 2022
+
+```{r}
+tbl_responses |> 
+  filter(survey_year == 2022) |> 
+  slice_sample(n = 50)
+```
+
+# Demographic
+
+```{r}
+tbl_demographic <- tbl_responses %>% 
+  select(
+    respondent_id, designation, age, where_are_you_located,
+    what_type_of_company_do_you_work_for, actuaries_at_my_organization,
+    years_of_experience,
+    survey_year) %>% 
+  mutate(
+    what_type_of_company_do_you_work_for = what_type_of_company_do_you_work_for %>% 
+      str_remove_all(" \\(please specify\\)") %>% 
+      str_replace("Firm", "firm")
+  )
+```
+
+# Melted tools
+
+```{r }
+str_fix_tools <- function(str_in) {
+  str_in %>% 
+    str_replace("PowerBI", "Power BI") %>% 
+    str_replace("GoogleSheets", "Google Sheets")
+}
+
+tbl_usage <- tbl_responses %>% 
+  select(respondent_id, survey_year, starts_with("how_often")) %>% 
+  pivot_longer(cols = starts_with("how_often"), names_to = 'tool', values_to = 'usage_frequency') %>% 
+  mutate(
+    tool = str_remove(tool, 'how_often_use_') %>% 
+      str_fix_tools()
+    , uses = usage_frequency != 'Not at all'
+    , ge_week = usage_frequency %in% c('About once a week', 'At least once a day')
+    , scripter = (tool %in% c('R', 'Python', 'MATLAB', 'SAS')) &
+      (ge_week)
+  )
+
+tbl_proficiency <- tbl_responses %>% 
+  select(respondent_id, survey_year, starts_with("how_proficient")) %>% 
+  pivot_longer(cols = starts_with("how_proficient"), names_to = 'tool', values_to = 'proficiency') %>% 
+  mutate(
+    tool = str_remove(tool, 'how_proficient_') %>% 
+      str_fix_tools()
+  )
+
+tbl_increase_proficiency <- tbl_responses %>% 
+  select(respondent_id, survey_year, starts_with('increase_proficiency')) %>% 
+  select(-increase_proficiency_other) %>% 
+  pivot_longer(
+    cols = starts_with('increase_proficiency')
+    , names_to = 'tool'
+    , values_to = 'increase_proficiency') %>% 
+  mutate(
+    tool = tool %>% 
+      str_remove('increase_proficiency_') %>% 
+      str_fix_tools()
+  ) %>% 
+  inner_join(tbl_demographic, by = c('respondent_id', 'survey_year'))
+
+tbl_respondent_tool <- tbl_usage %>% 
+  inner_join(
+    tbl_proficiency, by = c('respondent_id', 'survey_year', 'tool')
+  ) %>% 
+  inner_join(
+    tbl_increase_proficiency, by = c('respondent_id', 'survey_year', 'tool')
+  ) %>% 
+  mutate(
+    tool = tool %>% as_factor()
+  )
+
+rm(tbl_usage, tbl_proficiency, tbl_increase_proficiency)
+```
+
+## Suitability
+
+```{r }
+tbl_suitability <- tbl_responses %>% 
+  select(respondent_id, survey_year, starts_with("suited")) %>% 
+  pivot_longer(cols = starts_with("suited"), names_to = 'tool_area', values_to = 'suitability') %>% 
+  mutate(
+    tool_area = str_remove(tool_area, 'suited_') %>% 
+      str_replace_all("capital_modeling", "capital modeling")
+  ) %>% 
+  separate(tool_area, into = c("practice_area", "tool"), sep = "_") %>% 
+  mutate(
+    practice_area = str_to_title(practice_area)
+  ) %>% 
+  inner_join(
+    tbl_respondent_tool, by = c('respondent_id', 'survey_year', 'tool')
+  )
+```
+
+# Techniques
+
+```{r }
+tbl_techniques <- tbl_responses %>% 
+  select(respondent_id, survey_year, starts_with("technique")) %>%
+  select(-technique_use_other) %>%
+  pivot_longer(
+    cols = starts_with('technique')
+    , names_to = 'technique'
+    , values_to = 'use') %>% 
+  mutate(
+    technique = technique %>% 
+      str_remove('technique_') %>% 
+      str_replace_all("_", " ") %>% 
+      str_to_title() %>% 
+      str_replace('Aideep Learning', "AI/deep Learning") %>% 
+      str_replace("Ladder", "ladder") %>% 
+      str_replace("Models", "models") %>% 
+      str_replace(" Ferg", "-Ferg") %>% 
+      str_replace("Series", "series") %>% 
+      str_replace("Tree Based Methods", "Tree-based methods") %>% 
+      str_replace("Learning", "learning") %>% 
+      str_replace("Excess Loss Analysis", "Excess loss analysis")
+  )
+```
+
+# Melted barriers
+
+```{r}
+tbl_barrier <- tbl_responses %>% 
+  select(respondent_id, survey_year, contains("barrier")) %>% 
+  select(-barrier_learning_other, -barrier_implementation_other) %>% 
+  pivot_longer(
+    cols = contains('barrier')
+    , names_to = 'barrier'
+    , values_to = 'barrier_exists') %>% 
+  mutate(
+    barrier_type = case_when(
+      str_detect(barrier, 'learning') ~ 'learning',
+      str_detect(barrier, 'implementation') ~ 'implementation',
+      TRUE ~ 'use'
+    )
+  ) %>% 
+  mutate(
+    barrier = barrier %>% 
+      str_remove('barrier_') %>% 
+      str_remove('learning_') %>% 
+      str_remove('implementation_')
+  ) %>% 
+  pivot_wider(
+    names_from = 'barrier_type'
+    , values_from = 'barrier_exists'
+  ) %>% 
+  inner_join(
+    tbl_demographic, by = c('respondent_id', 'survey_year')
+  )
+```
+
+# Save
+
+```{r }
+tbls <- ls(pattern = 'tbl_')
+plts <- ls(pattern = 'plt_')
+fcts <- ls(pattern = 'f_')
+numbers <- ls(pattern = 'n_')
+funcs <- lsf.str()
+save(
+  file = represtools::OutputFile(params)
+  , list = c(tbls, plts, funcs, fcts, numbers)
+)
+```
+
+```{r}
+tbl_barrier |> 
+  write_csv(file = 'cooked/barriers.csv')
+
+tbl_demographic |> 
+  write_csv(file = 'cooked/demographic.csv')
+
+tbl_responses |> 
+  write_csv(file = 'cooked/responses.csv')
+
+tbl_respondent_tool |> 
+  write_csv(file = 'cooked/respondent_tool.csv')
+
+tbl_suitability |> 
+  write_csv(file = 'cooked/suitability.csv')
+
+tbl_techniques |> 
+  write_csv(file = 'cooked/techniques.csv')
+```
+

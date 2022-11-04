@@ -1,0 +1,127 @@
+---
+title: Cook Responses
+params: 
+  inputDir: "gathered/"
+  thisDir:  "cook/"
+  outputDir: "cooked/"
+  fileStem: "responses_2022"
+---
+
+```{r include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath('../'))
+
+knitr::opts_chunk$set(
+  echo = TRUE
+  , warning = TRUE
+  , message = TRUE
+  , error = TRUE
+)
+
+library(tidyverse)
+```
+
+# Import
+
+```{r }
+tbl_col_names <- read_csv(
+  file.path("gathered", "technology_survey_responses_2022.csv")
+  , n_max = 2
+  , col_names = FALSE
+  , na = " "
+)
+
+col_names <- tbl_col_names %>% 
+  apply(2, paste, collapse = " ") %>% 
+  unname() %>%
+  str_replace_all("NA", "") %>% 
+  str_replace_all(" ", "_") %>% 
+  str_replace_all("-", "_") %>% 
+  str_remove_all("^_") %>% 
+  str_remove_all("response") %>% 
+  str_remove_all("[,/?]") %>% 
+  str_remove_all("(please_specify)") %>% 
+  str_remove_all("\\)$") %>%
+  str_remove_all("\\($") %>%
+  str_remove_all("_$") %>% 
+  str_replace_all("__", "_") %>% 
+  str_remove_all("_Response") %>% 
+  str_remove_all("Which_of_the_following_general_analytic_techniques_do_you_use_regularly_") %>% 
+  tolower()
+
+tools <- c('R', 'Excel', 'GoogleSheets', 'SAS', 'Python', 'Tableau', 'PowerBI', 'SQL')
+
+col_names[10:17] <- paste0("how_often_use_", tools)
+col_names[18] <- "how_often_use_something_else"
+
+col_names[19:26] <- paste0("how_proficient_", tools)
+col_names[27] <- "how_proficient_something_else"
+
+col_names[28:51] <- crossing(
+    field = c('ratemaking', 'reserving', 'capital_modeling'), tool = tools
+  ) |> 
+  mutate(
+    suited = str_c("suited_", field, "_", tool)
+  ) |> 
+  pull(suited)
+
+col_names[52] <- "suited_something_else"
+
+col_names[53] <- "what_other_tools_should_be_added"
+
+col_names[54:61] <- paste0('increase_proficiency_', tools)
+col_names[62] <- "increase_proficiency_other"
+
+barriers <- c('inadequate_staff', 'lack_of_management_support',
+              'lack_of_it_support', 'financial_cost',
+              'not_enough_time', 'no_perceived_benefit',
+              'other')
+
+col_names[63:69] <- paste0("barrier_learning_", barriers)
+col_names[70:76] <- paste0("barrier_implementation_", barriers)
+
+col_names[77] <- "linear_models"
+col_names[81] <- "bayesian"
+
+col_names[83] <- "time_series"
+col_names[86] <- "tree_based_methods"
+col_names[87] <- "unsupervised_learning"
+
+col_names[77:87] <- paste0("technique_use_", col_names[77:87])
+
+col_names[89:95] <- paste0("barrier_technique_", barriers)
+
+col_names[96] <- "what_new_technology"
+col_names[97] <- "other_question"
+col_names[98] <- "additional_comments"
+col_names[102] <- "located_other"
+col_names[104] <- "type_of_company_other"
+col_names[105] <- "actuaries_at_my_organization"
+col_names[106] <- "years_of_experience"
+
+tbl_responses_2022 <- read_csv(
+  file.path("gathered", "technology_survey_responses_2022.csv")
+  , skip = 2
+  , col_names = col_names
+) |> 
+  mutate(
+    survey_year = 2022
+  )
+```
+
+# Save
+
+```{r}
+rm(tbl_col_names)
+```
+
+```{r }
+tbls <- ls(pattern = 'tbl_')
+plts <- ls(pattern = 'plt_')
+fcts <- ls(pattern = 'f_')
+numbers <- ls(pattern = 'n_')
+funcs <- lsf.str()
+save(
+  file = represtools::OutputFile(params)
+  , list = c(tbls, plts, funcs, fcts, numbers)
+)
+```

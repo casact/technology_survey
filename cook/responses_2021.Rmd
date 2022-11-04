@@ -1,0 +1,170 @@
+---
+title: Cook Responses
+params: 
+  inputDir: "gathered/"
+  thisDir:  "cook/"
+  outputDir: "cooked/"
+  fileStem: "responses_2021"
+---
+
+```{r include = FALSE}
+knitr::opts_knit$set(root.dir = normalizePath('../'))
+
+knitr::opts_chunk$set(
+  echo = TRUE
+  , warning = TRUE
+  , message = TRUE
+  , error = TRUE
+)
+
+library(tidyverse)
+```
+
+# Import
+
+```{r }
+tbl_col_names <- read_csv(
+  file.path("gathered", "technology_survey_responses_2021.csv")
+  , n_max = 2
+  , col_names = FALSE
+  , na = " "
+)
+
+col_names <- tbl_col_names %>% 
+  apply(2, paste, collapse = " ") %>% 
+  unname() %>%
+  str_replace_all("NA", "") %>% 
+  str_replace_all(" ", "_") %>% 
+  str_replace_all("-", "_") %>% 
+  str_remove_all("^_") %>% 
+  str_remove_all("response") %>% 
+  str_remove_all("[,/?]") %>% 
+  str_remove_all("(please_specify)") %>% 
+  str_remove_all("\\)$") %>%
+  str_remove_all("\\($") %>%
+  str_remove_all("_$") %>% 
+  str_replace_all("__", "_") %>% 
+  str_remove_all("_Response") %>% 
+  str_remove_all("Which_of_the_following_general_analytic_techniques_do_you_use_regularly_") %>% 
+  tolower()
+
+col_names[10] <- "how_often_use_R"
+col_names[11] <- "how_often_use_Excel"
+col_names[12] <- "how_often_use_GoogleSheets"
+col_names[13] <- "how_often_use_SAS"
+col_names[14] <- "how_often_use_Python"
+col_names[15] <- "how_often_use_Tableau"
+col_names[16] <- "how_often_use_MATLAB"
+col_names[17] <- "how_often_use_PowerBI"
+col_names[18] <- "how_often_use_SQL"
+
+col_names[19] <- "how_proficient_R"
+col_names[20] <- "how_proficient_Excel"
+col_names[21] <- "how_proficient_GoogleSheets"
+col_names[22] <- "how_proficient_SAS"
+col_names[23] <- "how_proficient_Python"
+col_names[24] <- "how_proficient_Tableau"
+col_names[25] <- "how_proficient_MATLAB"
+col_names[26] <- "how_proficient_PowerBI"
+col_names[27] <- "how_proficient_SQL"
+
+col_names[28] <- "suited_ratemaking_R"
+col_names[29] <- "suited_reserving_R"
+col_names[30] <- "suited_capital_modeling_R"
+
+col_names[31] <- "suited_ratemaking_Excel"
+col_names[32] <- "suited_reserving_Excel"
+col_names[33] <- "suited_capital_modeling_Excel"
+
+col_names[34] <- "suited_ratemaking_GoogleSheets"
+col_names[35] <- "suited_reserving_GoogleSheets"
+col_names[36] <- "suited_capital_modeling_GoogleSheets"
+
+col_names[37] <- "suited_ratemaking_SAS"
+col_names[38] <- "suited_reserving_SAS"
+col_names[39] <- "suited_capital_modeling_SAS"
+
+col_names[40] <- "suited_ratemaking_Python"
+col_names[41] <- "suited_reserving_Python"
+col_names[42] <- "suited_capital_modeling_Python"
+
+col_names[43] <- "suited_ratemaking_Tableau"
+col_names[44] <- "suited_reserving_Tableau"
+col_names[45] <- "suited_capital_modeling_Tableau"
+
+col_names[46] <- "suited_ratemaking_MATLAB"
+col_names[47] <- "suited_reserving_MATLAB"
+col_names[48] <- "suited_capital_modeling_MATLAB"
+
+col_names[49] <- "suited_ratemaking_PowerBI"
+col_names[50] <- "suited_reserving_PowerBI"
+col_names[51] <- "suited_capital_modeling_PowerBI"
+
+col_names[52] <- "suited_ratemaking_SQL"
+col_names[53] <- "suited_reserving_SQL"
+col_names[54] <- "suited_capital_modeling_SQL"
+
+col_names[55] <- "what_other_tools_should_be_added"
+
+col_names[56] <- "increase_proficiency_R"
+col_names[57] <- "increase_proficiency_Excel"
+col_names[58] <- "increase_proficiency_GoogleSheets"
+col_names[59] <- "increase_proficiency_SAS"
+col_names[60] <- "increase_proficiency_Python"
+col_names[61] <- "increase_proficiency_Tableau"
+col_names[62] <- "increase_proficiency_MATLAB"
+col_names[63] <- "increase_proficiency_PowerBI"
+col_names[64] <- "increase_proficiency_SQL"
+col_names[65] <- "increase_proficiency_other"
+
+barriers <- c('inadequate_staff', 'lack_of_management_support',
+              'lack_of_it_support', 'financial_cost',
+              'not_enough_time', 'no_perceived_benefit',
+              'other')
+col_names[66:72] <- paste0("barrier_learning_", barriers)
+col_names[73:79] <- paste0("barrier_implementation_", barriers)
+
+col_names[80] <- "linear_models"
+
+col_names[84] <- "bayesian"
+
+col_names[86] <- "time_series"
+
+col_names[89] <- "tree_based_methods"
+col_names[90] <- "unsupervised_learning"
+
+col_names[80:91] <- paste0("technique_use_", col_names[80:91])
+
+col_names[92] <- "additional_comments"
+col_names[96] <- "located_other"
+col_names[98] <- "type_of_company_other"
+col_names[99] <- "actuaries_at_my_organization"
+col_names[100] <- "years_of_experience"
+
+tbl_responses_2021 <- read_csv(
+  file.path("gathered", "technology_survey_responses_2021.csv")
+  , skip = 2
+  , col_names = col_names
+) |> 
+  mutate(
+    survey_year = 2021
+  )
+```
+
+# Save
+
+```{r}
+rm(tbl_col_names)
+```
+
+```{r }
+tbls <- ls(pattern = 'tbl_')
+plts <- ls(pattern = 'plt_')
+fcts <- ls(pattern = 'f_')
+numbers <- ls(pattern = 'n_')
+funcs <- lsf.str()
+save(
+  file = represtools::OutputFile(params)
+  , list = c(tbls, plts, funcs, fcts, numbers)
+)
+```
