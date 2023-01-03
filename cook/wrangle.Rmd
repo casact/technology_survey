@@ -291,13 +291,16 @@ tbl_techniques <- tbl_responses %>%
       str_replace("Series", "series") %>% 
       str_replace("Tree Based Methods", "Tree-based methods") %>% 
       str_replace("Learning", "learning") %>% 
-      str_replace("Excess Loss Analysis", "Excess loss analysis")
+      str_replace("Excess Loss Analysis", "Excess loss analysis") |> 
+      str_remove("Use "),
+      use = !is.na(use)
   )
 ```
 
 # Melted barriers
 
 ```{r}
+# 12834123218
 tbl_barrier <- tbl_responses %>% 
   select(respondent_id, survey_year, contains("barrier")) %>% 
   select(-barrier_learning_other, -barrier_implementation_other) %>% 
@@ -306,6 +309,7 @@ tbl_barrier <- tbl_responses %>%
     , names_to = 'barrier'
     , values_to = 'barrier_exists') %>% 
   mutate(
+    barrier_exists = !is.na(barrier_exists),
     barrier_type = case_when(
       str_detect(barrier, 'learning') ~ 'learning',
       str_detect(barrier, 'implementation') ~ 'implementation',
@@ -316,7 +320,8 @@ tbl_barrier <- tbl_responses %>%
     barrier = barrier %>% 
       str_remove('barrier_') %>% 
       str_remove('learning_') %>% 
-      str_remove('implementation_')
+      str_remove('implementation_') |> 
+      str_remove('technique_')
   ) %>% 
   pivot_wider(
     names_from = 'barrier_type'
