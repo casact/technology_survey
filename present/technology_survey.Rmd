@@ -65,11 +65,13 @@ tbl_increase_proficiency_summary <- tbl_increase_proficiency_summary %>%
     pct_increase_str = pct_increase %>% scales::percent(accuracy = 0.1)
   ) %>% 
   arrange(desc(pct_increase))
+
+n_respondents <- tbl_respondents |> 
+  filter(survey_year == 2022) |> 
+  pull(n_respondents)
 ```
 
-Actuaries are clever people, who have impressive mathematical skills and experience. However, they cannot generate results without the assistance of technology. A wide range of software tools exist to carry out calculations on large and small data sets, to store, extract and transform information, and to generate output that may be shared with their stakeholders. Actuaries use these tools to implement a wide range of techniques, from classic methods like chain-ladder reserving to more recently established predictive analytics methods like decision trees, or deep learning.
-
-But how is all of this being done? In the summer of 2021, the Casualty Actuarial Society (CAS) conducted the first of what we hope will be an annual survey on technology used by actuaries. A total of `r n_respondents %>% scales::comma()` responses were received from both members and candidates still sitting for exams. We asked about what tools are being used, how proficient respondents feel they are, what barriers they experience, what techniques they apply and where they would like to improve.
+In 2021, the the Casualty Actuarial Society (CAS) launched its first annual survey on technology used by actuaries. A total of `r n_respondents %>% scales::comma()` responses were received from both members and candidates still sitting for exams. We asked about what tools are being used, how proficient respondents feel they are, what barriers they experience, what techniques they apply and where they would like to improve.
 
 This paper will walk through results in detail. First, though, some key observtions are listed below.
 
