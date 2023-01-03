@@ -122,17 +122,17 @@ tbl_tools_added <- tbl_responses %>%
 ```{r}
 summarise_usage <- function(tbl_in) {
   tbl_in %>% 
-    group_by(tool, usage_frequency) %>% 
+    group_by(survey_year, tool, usage_frequency) %>% 
     summarise(
       n_total = n()
     ) %>% 
     ungroup() %>% 
     filter(!is.na(usage_frequency)) %>% 
-    group_by(tool) %>% 
+    group_by(survey_year, tool) %>% 
     mutate(
       pct_tool = n_total / sum(n_total)
     ) %>% 
-    group_by(usage_frequency) %>% 
+    group_by(survey_year, usage_frequency) %>% 
     mutate(
       pct_usage_frequency = n_total / sum(n_total)
     ) %>% 
@@ -144,6 +144,52 @@ summarise_usage <- function(tbl_in) {
 tbl_usage_summary <- tbl_respondent_tool %>% 
   summarise_usage()
 ```
+
+```{r}
+tbl_usage_summary |> 
+  filter(tool == 'R') |> 
+  ggplot(aes(survey_year, pct_tool)) + 
+  geom_line(aes(color = usage_frequency)) + 
+  theme_minimal()
+```
+
+```{r}
+tbl_usage_summary |> 
+  filter(usage_frequency == 'At least once a day') |>
+  filter(!tool %in% c('Excel', 'MATLAB')) |> 
+  ggplot(aes(survey_year, pct_tool)) + 
+  geom_line(aes(color = tool)) + 
+  theme_minimal()
+```
+
+```{r}
+tbl_usage_summary |> 
+  filter(usage_frequency == 'At least once a day') |>
+  filter(!tool %in% c('Excel', 'MATLAB', 'SQL')) |> 
+  ggplot(aes(survey_year, pct_tool)) + 
+  geom_line(aes(color = tool)) + 
+  theme_minimal()
+```
+
+```{r}
+tbl_usage_summary |> 
+  filter(usage_frequency == 'At least once a day') |>
+  filter(tool %in% c('Excel', 'SQL')) |> 
+  ggplot(aes(survey_year, pct_tool)) + 
+  geom_line(aes(color = tool)) + 
+  theme_minimal()
+```
+
+```{r}
+tbl_usage_summary |> 
+  filter(usage_frequency == 'Not at all') |>
+  filter(!tool %in% c('Excel', 'MATLAB', 'SQL')) |> 
+  ggplot(aes(survey_year, pct_tool)) + 
+  geom_line(aes(color = tool)) + 
+  theme_minimal()
+```
+
+
 
 ```{r }
 plt_usage_summary <- function(tbl_summary_in){
@@ -161,6 +207,7 @@ f_unused_tools <- tbl_usage_summary %>%
   filter(usage_frequency == 'Not at all') %>% 
   arrange(desc(pct_tool)) %>% 
   pull(tool) %>% 
+  unique() |> 
   as.character()
 
 plt_basic_usage <- tbl_usage_summary %>% 
@@ -913,15 +960,15 @@ tbl_respondent_tool %>%
 
 ```{r}
 tbl_barrier_summary <- tbl_barrier %>% 
-  group_by(barrier) %>% 
+  group_by(survey_year, barrier) %>% 
   summarise(
-    n_learning = sum(learning)
-    , n_implementation = sum(implementation)
-  ) %>% 
+    pct_learning = sum(learning, na.rm = TRUE) / sum(!is.na(learning)),
+    pct_implementation = sum(implementation, na.rm = TRUE) / sum(!is.na(implementation)),
+    pct_use = sum(use, na.rm = TRUE) / sum(!is.na(use))
+  ) |> 
+  ungroup() |> 
   mutate(
-    pct_learning = n_learning / n_respondents
-    , pct_implementation = n_implementation / n_respondents
-    , barrier = str_replace_all(barrier, '_', ' ') %>% 
+    barrier = str_replace_all(barrier, '_', ' ') %>% 
       str_to_title() %>% 
       str_replace_all('It', 'IT') %>% 
       str_replace_all('Of', 'of')
@@ -953,11 +1000,21 @@ plt_barriers
 # Techniques
 
 ```{r}
+tbl_no_techniques <- tbl_techniques |> 
+  group_by(survey_year, respondent_id) |> 
+  summarise(
+    n_techniques = sum(use)
+  ) |> 
+  filter(n_techniques == 0)
+
 tbl_technique_summary <- tbl_techniques %>% 
-  group_by(technique) %>% 
-  summarise(n_use = sum(use)) %>% 
+  anti_join(tbl_no_techniques, by = c('survey_year', 'respondent_id')) |> 
+  group_by(survey_year, technique) %>% 
+  summarise(
+    n_use = sum(use),
+    n_response = n()) %>% 
   mutate(
-    pct_use = n_use / n_respondents
+    pct_use = n_use / n_response
   )
 
 # # %>%
