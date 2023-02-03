@@ -1,6 +1,11 @@
 *.csv
 *.xlsx
 *.zip
+*.rda
+cooked/*.html
+analyzed/*.html
+presented/*.html
+presented/*.docx
 
 ## R specific stuff ##############################################
 # History files
