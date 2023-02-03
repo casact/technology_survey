@@ -5,22 +5,22 @@ ROOT_DIR = ./
 
 GATHER_DIR = $(ROOT_DIR)gather/
 GATHERED_DIR = $(ROOT_DIR)gathered/
-GATHER_SOURCE = $(wildcard $(GATHER_DIR)*.Rmd)
+GATHER_SOURCE = $(sort wildcard $(GATHER_DIR)*.Rmd)
 GATHERED = $(patsubst $(GATHER_DIR)%.Rmd, $(GATHERED_DIR)%.rda, $(GATHER_SOURCE))
 
 COOK_DIR = $(ROOT_DIR)cook/
 COOKED_DIR = $(ROOT_DIR)cooked/
-COOK_SOURCE = $(wildcard $(COOK_DIR)*.Rmd)
+COOK_SOURCE = $(sort wildcard $(COOK_DIR)*.Rmd)
 COOKED = $(patsubst $(COOK_DIR)%.Rmd, $(COOKED_DIR)%.rda, $(COOK_SOURCE))
 
 ANALYZE_DIR = $(ROOT_DIR)analyze/
 ANALYZED_DIR = $(ROOT_DIR)analyzed/
-ANALYZE_SOURCE = $(wildcard $(ANALYZE_DIR)*.Rmd)
+ANALYZE_SOURCE = $(sort wildcard $(ANALYZE_DIR)*.Rmd)
 ANALYZED = $(patsubst $(ANALYZE_DIR)%.Rmd, $(ANALYZED_DIR)%.rda, $(ANALYZE_SOURCE))
 
 PRESENT_DIR = $(ROOT_DIR)present/
 PRESENTED_DIR = $(ROOT_DIR)presented/
-PRESENT_SOURCE = $(wildcard $(PRESENT_DIR)*.Rmd)
+PRESENT_SOURCE = $(sort wildcard $(PRESENT_DIR)*.Rmd)
 PRESENTED = $(patsubst $(PRESENT_DIR)%.Rmd, $(PRESENTED_DIR)%.rda, $(PRESENT_SOURCE))
 
 KNIT    = Rscript -e "library(rmarkdown); rmarkdown::render('$<')"
